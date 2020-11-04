@@ -1040,3 +1040,19 @@ func TestContainer_Cleanup(t *testing.T) {
 		require.Equal(t, []string{"server", "mux"}, cleanupCalls)
 	})
 }
+
+func TestContainer_DOT(t *testing.T) {
+	t.Run("test", func(t *testing.T) {
+		type Controller interface{}
+		c, err := di.New(
+			di.Provide(func(handler http.Handler) *http.Server { return &http.Server{} }),
+			di.Provide(func([]Controller) *http.ServeMux { return &http.ServeMux{} }, di.As(new(http.Handler))),
+			di.Provide(func() string { return "1c" }, di.As(new(Controller))),
+			di.Provide(func() int { return 123 }, di.As(new(Controller))),
+		)
+		require.NoError(t, err)
+		g, err := c.DOT()
+		require.NoError(t, err)
+		fmt.Println(g.String())
+	})
+}

@@ -3,6 +3,8 @@ package di
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/emicklei/dot"
 )
 
 // Container is a dependency injection container.
@@ -138,7 +140,7 @@ func (c *Container) provide(constructor Constructor, options ...ProvideOption) e
 			rv:       n.rv,
 			rt:       i.Type,
 			tags:     n.tags,
-			compiler: n.compiler,
+			compiler: newInterfaceCompiler(n),
 		})
 		return nil
 	}
@@ -308,4 +310,9 @@ func (c *Container) Cleanup() {
 	for i := len(c.schema.cleanups) - 1; i >= 0; i-- {
 		c.schema.cleanups[i]()
 	}
+}
+
+// DOT
+func (c *Container) DOT() (*dot.Graph, error) {
+	return c.schema.renderDot()
 }

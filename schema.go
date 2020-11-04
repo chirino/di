@@ -3,6 +3,8 @@ package di
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/emicklei/dot"
 )
 
 // schema is a dependency injection schema.
@@ -112,15 +114,40 @@ func (s *defaultSchema) bypass(n *node) error {
 	return nil
 }
 
-//
-//func (s *defaultSchema) renderDot() dot.Graph {
-//	root := dot.NewGraph()
-//	for _, group := range s.nodes {
-//		for _, node := range group {
-//			if err := prepare(s, node); err != nil {
-//
-//			}
-//		}
-//
-//	}
-//}
+func (s *defaultSchema) renderDot() (*dot.Graph, error) {
+	root := dot.NewGraph()
+	for _, group := range s.nodes {
+		for _, n := range group {
+			if err := s.renderNode(root, n); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return root, nil
+}
+
+func (s *defaultSchema) renderNode(root *dot.Graph, n *node) error {
+	rnode := root.Node(n.String())
+	var all []*node
+	params, err := n.params(s)
+	if err != nil {
+		return err
+	}
+	all = append(all, params...)
+	for _, field := range n.fields() {
+		fnode, err := s.find(field.rt, field.tags)
+		if err != nil {
+			return err
+		}
+		all = append(all, fnode)
+	}
+	for _, p := range all {
+		if err := s.renderNode(root, p); err != nil {
+			return err
+		}
+		if len(root.Node(p.String()).EdgesTo(rnode)) == 0 {
+			root.Node(p.String()).Edge(rnode)
+		}
+	}
+	return nil
+}
