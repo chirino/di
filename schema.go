@@ -17,6 +17,7 @@ type schema interface {
 type defaultSchema struct {
 	nodes    map[reflect.Type][]*node
 	cleanups []func()
+	passed   map[*node]int
 }
 
 func (s *defaultSchema) cleanup(cleanup func()) {
@@ -92,3 +93,34 @@ func (s *defaultSchema) group(t reflect.Type, tags Tags) (*node, error) {
 	}
 	return node, nil
 }
+
+func (s *defaultSchema) bypass(n *node) error {
+	if s.passed == nil {
+		s.passed = map[*node]int{}
+		for _, group := range s.nodes {
+			for _, node := range group {
+				if err := visit(s, node, s.passed); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if err := visit(s, n, s.passed); err != nil {
+		return err
+	}
+	return nil
+}
+
+//
+//func (s *defaultSchema) renderDot() dot.Graph {
+//	root := dot.NewGraph()
+//	for _, group := range s.nodes {
+//		for _, node := range group {
+//			if err := prepare(s, node); err != nil {
+//
+//			}
+//		}
+//
+//	}
+//}

@@ -22,8 +22,6 @@ type Container struct {
 	}
 	// Array of provider cleanups.
 	cleanups []func()
-	// Flag indicates acyclic verification state
-	//verified map[key]bool
 }
 
 // New constructs container with provided options. Example usage (simplified):
@@ -210,7 +208,7 @@ func (c *Container) invoke(invocation Invocation, _ ...InvokeOption) error {
 	}
 	var args []reflect.Value
 	for _, node := range nodes {
-		if err := prepare(c.schema, node); err != nil {
+		if err := c.schema.bypass(node); err != nil {
 			return errInvalidInvocation{err}
 		}
 		v, err := node.Value(c.schema)
@@ -295,14 +293,14 @@ func (c *Container) find(ptr Pointer, options ...ResolveOption) (*node, error) {
 	for _, opt := range options {
 		opt.applyResolve(&params)
 	}
-	node, err := c.schema.find(reflect.TypeOf(ptr).Elem(), params.Tags)
+	n, err := c.schema.find(reflect.TypeOf(ptr).Elem(), params.Tags)
 	if err != nil {
 		return nil, err
 	}
-	if err := prepare(c.schema, node); err != nil {
+	if err := c.schema.bypass(n); err != nil {
 		return nil, err
 	}
-	return node, nil
+	return n, nil
 }
 
 // Cleanup runs destructors in reverse order that was been created.
