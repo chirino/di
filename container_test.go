@@ -150,6 +150,24 @@ func TestContainer_Provide(t *testing.T) {
 		require.Contains(t, err.Error(), "container_test.go:")
 		require.Contains(t, err.Error(), ": nil: not a pointer to interface")
 	})
+
+	t.Run("initialization hooks", func(t *testing.T) {
+		c, err := di.New()
+		require.NoError(t, err)
+		executed := false
+		server := &http.Server{}
+		err = c.Provide(func() *http.Server { return server }, di.WithHook(func(pointer di.Pointer) error {
+			require.Equal(t, fmt.Sprintf("%p", server), fmt.Sprintf("%p", pointer))
+			executed = true
+			return nil
+		}))
+		require.NoError(t, err)
+		require.False(t, executed)
+		var result *http.Server
+		err = c.Resolve(&result)
+		require.NoError(t, err)
+		require.True(t, executed)
+	})
 }
 
 func TestContainer_ProvideValue(t *testing.T) {
@@ -203,6 +221,44 @@ func TestContainer_ProvideValue(t *testing.T) {
 		require.Nil(t, c)
 		require.Contains(t, err.Error(), "container_test.go:")
 		require.Contains(t, err.Error(), "invalid value, got nil")
+	})
+
+	t.Run("initialization hooks", func(t *testing.T) {
+		c, err := di.New()
+		require.NoError(t, err)
+		executed := false
+		server := &http.Server{}
+		err = c.ProvideValue(server, di.WithHook(func(pointer di.Pointer) error {
+			require.Equal(t, fmt.Sprintf("%p", server), fmt.Sprintf("%p", pointer))
+			executed = true
+			return nil
+		}))
+		require.NoError(t, err)
+		require.False(t, executed)
+		var result *http.Server
+		err = c.Resolve(&result)
+		require.NoError(t, err)
+		require.True(t, executed)
+	})
+
+	t.Run("initialization hook error", func(t *testing.T) {
+		c, err := di.New()
+		require.NoError(t, err)
+		executed := false
+		server := &http.Server{}
+		err = c.ProvideValue(server, di.WithHook(func(pointer di.Pointer) error {
+			require.Equal(t, fmt.Sprintf("%p", server), fmt.Sprintf("%p", pointer))
+			executed = true
+			return errors.New("hook error")
+		}))
+		require.NoError(t, err)
+		require.False(t, executed)
+		var result *http.Server
+		err = c.Resolve(&result)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "container_test.go")
+		require.Contains(t, err.Error(), ": *http.Server: hook error")
+		require.True(t, executed)
 	})
 }
 
@@ -377,6 +433,18 @@ func TestContainer_Resolve(t *testing.T) {
 		require.Contains(t, err.Error(), "container_test.go:")
 		require.Contains(t, err.Error(), ": cycle detected") // todo: improve message
 	})
+
+	//t.Run("first resolve checks graph correctness", func(t *testing.T) {
+	//	c, err := di.New()
+	//	require.NoError(t, err)
+	//	err = c.Provide(func(handler http.Handler) *http.Server { return &http.Server{Handler: handler} })
+	//	require.NoError(t, err)
+	//	err = c.Provide(func() string { return "" })
+	//	require.NoError(t, err)
+	//	var s string
+	//	err = c.Resolve(&s)
+	//	require.EqualError(t, err, "")
+	//})
 
 	t.Run("resolve not existing dependency type cause error", func(t *testing.T) {
 		c, err := di.New()

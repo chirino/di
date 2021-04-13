@@ -132,6 +132,17 @@ func WithName(name string) ProvideOption {
 	})
 }
 
+// HookFunc
+type HookFunc func(pointer Pointer) error
+
+// WithHook
+// EXPERIMENTAL FEATURE
+func WithHook(hooks ...HookFunc) ProvideOption {
+	return provideOption(func(params *ProvideParams) {
+		params.Hooks = append(params.Hooks, hooks...)
+	})
+}
+
 // Resolve returns container options that resolves type into target. All resolves will be done on compile stage
 // after call invokes.
 func Resolve(target interface{}, options ...ResolveOption) Option {
@@ -189,6 +200,7 @@ func Options(options ...Option) Option {
 type ProvideParams struct {
 	Tags       Tags
 	Interfaces []Interface
+	Hooks      []HookFunc
 }
 
 func (p ProvideParams) applyProvide(params *ProvideParams) {
